@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  student-mysql:
+    image: mysql:8.0
+    container_name: student-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: studentdb
+      MYSQL_USER: student
+      MYSQL_PASSWORD: student123
+    ports:
+      - "3307:3306"  # Port MySQL exposé sur la machine hôte
+    networks:
+      - student-network
+    volumes:
+      - student-mysql-data:/var/lib/mysql  # Persistance des données
+
+  student-backend:
+    image: malekhellal-3csde2-student-management
+    container_name: student-backend
+    restart: on-failure
+    depends_on:
+      - student-mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://student-mysql:3306/studentdb
+      SPRING_DATASOURCE_USERNAME: student
+      SPRING_DATASOURCE_PASSWORD: student123
+    ports:
+      - "8089:8089"  # Port exposé pour accéder au backend depuis le navigateur
+    networks:
+      - student-network
+
+networks:
+  student-network:
+    driver: bridge
+
+volumes:
+  student-mysql-data:
