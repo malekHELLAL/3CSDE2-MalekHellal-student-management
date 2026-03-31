@@ -1,0 +1,74 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "MalekHellal_5SIM1_student-management"
+        MYSQL_CONTAINER = "student-mysql"
+        SPRING_PORT = "8081"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/malekHELLAL/3CSDE2-MalekHellal-student-management.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build(DOCKER_IMAGE)
+                }
+            }
+        }
+
+        stage('Start MySQL') {
+            steps {
+                script {
+                    sh """
+                    docker network create devops-network || true
+                    docker run -d --name $MYSQL_CONTAINER --network devops-network -e MYSQL_ROOT_PASSWORD=root123 -e MYSQL_DATABASE=studentdb mysql:8.0 || true
+                    """
+                }
+            }
+        }
+
+        stage('Run Spring Boot Docker Container') {
+            steps {
+                script {
+                    sh """
+                    docker run -d --name student-app --network devops-network -p $SPRING_PORT:8080 $DOCKER_IMAGE
+                    """
+                }
+            }
+        }
+
+        stage('Clean up') {
+            steps {
+                sh 'docker system prune -f'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Build, Test et Déploiement réussis !"
+        }
+        failure {
+            echo "Erreur dans le pipeline !"
+        }
+    }
+}

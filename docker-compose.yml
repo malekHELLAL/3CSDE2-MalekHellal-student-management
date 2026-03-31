@@ -11,30 +11,54 @@ services:
       MYSQL_USER: student
       MYSQL_PASSWORD: student123
     ports:
-      - "3307:3306"  # Port MySQL exposé sur la machine hôte
+      - "3307:3306"
     networks:
       - student-network
     volumes:
-      - student-mysql-data:/var/lib/mysql  # Persistance des données
+      - student-mysql-data:/var/lib/mysql
+
+    # ✅ AJOUT ICI
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 5
 
   student-backend:
     image: malekhellal-3csde2-student-management
     container_name: student-backend
     restart: on-failure
+
+    # ✅ MODIFICATION ICI
     depends_on:
-      - student-mysql
+      student-mysql:
+        condition: service_healthy
+
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://student-mysql:3306/studentdb
       SPRING_DATASOURCE_USERNAME: student
       SPRING_DATASOURCE_PASSWORD: student123
+
     ports:
-      - "8089:8089"  # Port exposé pour accéder au backend depuis le navigateur
+      - "8089:8089"
     networks:
       - student-network
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - student-network
+
+volumes:
+  student-mysql-data:
+  jenkins_home:
 
 networks:
   student-network:
     driver: bridge
-
-volumes:
-  student-mysql-data:
